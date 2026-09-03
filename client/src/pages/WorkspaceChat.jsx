@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import CodeEditor from '../components/CodeEditor/CodeEditor';
-import { streamAIChat } from '../services/api';
+import { streamAIChat, uploadDocument, getUserDocuments, deleteDocument } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { CHAT_MODES } from '../modes/modeConfig';
 import * as LucideIcons from 'lucide-react';
@@ -26,6 +27,13 @@ function WorkspaceChat() {
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef(null);
 
+  // ── Document / RAG State ──
+  const [documents, setDocuments] = useState([]);
+  const [selectedDoc, setSelectedDoc] = useState(null);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [docDropdownOpen, setDocDropdownOpen] = useState(false);
+  const fileInputRef = useRef(null);
+
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('apollo-theme');
     return saved ? saved === 'dark' : true;
@@ -46,11 +54,69 @@ function WorkspaceChat() {
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
   useEffect(() => { inputRef.current?.focus(); }, [activeMode]);
 
+  // Load existing uploaded documents on mount
+  useEffect(() => {
+    async function loadDocs() {
+      try {
+        const docs = await getUserDocuments();
+        setDocuments(docs);
+        if (docs.length > 0) {
+          setSelectedDoc(docs[0]);
+        }
+      } catch {
+        // non-fatal if backend not yet ready
+      }
+    }
+    loadDocs();
+  }, []);
+
   const handleModeSelect = (mode) => {
     if (mode.key === activeMode.key) return;
     setActiveMode(mode);
     setMessages([]);
     setChatInput('');
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingDoc(true);
+    const toastId = toast.loading(`Uploading & indexing ${file.name}...`);
+
+    try {
+      const res = await uploadDocument(file, user?.id);
+      const newDoc = res.document;
+      setDocuments(prev => [newDoc, ...prev]);
+      setSelectedDoc(newDoc);
+      toast.success(`"${file.name}" indexed (${newDoc.chunkCount} chunks)!`, { id: toastId });
+
+      // If not on doc_chat mode, switch to it automatically
+      const docMode = CHAT_MODES.find(m => m.key === 'doc_chat');
+      if (docMode && activeMode.key !== 'doc_chat') {
+        setActiveMode(docMode);
+      }
+      setDocDropdownOpen(false);
+    } catch (err) {
+      toast.error(err.message || 'Failed to upload document', { id: toastId });
+    } finally {
+      setUploadingDoc(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteDocument = async (docId, e) => {
+    e.stopPropagation();
+    try {
+      await deleteDocument(docId);
+      setDocuments(prev => prev.filter(d => d.id !== docId));
+      if (selectedDoc?.id === docId) {
+        setSelectedDoc(null);
+      }
+      toast.success('Document removed');
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete document');
+    }
   };
 
   const handleSend = async () => {
@@ -66,6 +132,7 @@ function WorkspaceChat() {
       code: code.trim() || '// No code provided',
       language,
       mode: activeMode.key,
+      docId: selectedDoc?.id,
       history: historyForApi.concat({ role: 'user', content: text }),
       onChunk: (chunk) => setMessages(prev => {
         const updated = [...prev];
@@ -273,13 +340,36 @@ function WorkspaceChat() {
                 </div>
                 <h3>{activeMode.label}</h3>
                 <p>{activeMode.description}</p>
+                
+                {activeMode.key === 'doc_chat' && (
+                  <div className="wsc-doc-dropzone" onClick={() => fileInputRef.current?.click()}>
+                    <LucideIcons.UploadCloud size={32} color="#06b6d4" />
+                    <h4>{selectedDoc ? `Current: ${selectedDoc.name}` : 'Upload Document (PDF, Code, Markdown)'}</h4>
+                    <p>{selectedDoc ? `${selectedDoc.chunkCount} vector chunks indexed. Click to change file.` : 'Drag & drop or click to browse files for RAG search'}</p>
+                    <button type="button" className="wsc-doc-upload-btn" disabled={uploadingDoc}>
+                      {uploadingDoc ? <><LucideIcons.Loader2 size={14} className="ide-spin" /> Indexing...</> : <><LucideIcons.Plus size={14} /> Select Document</>}
+                    </button>
+                  </div>
+                )}
+
                 <div className="wsc-empty-hint">
                   <LucideIcons.Sparkles size={12} color="var(--ws-text-muted)" />
-                  Type a message below to start chatting
+                  {activeMode.key === 'doc_chat' && selectedDoc
+                    ? `Ask questions about "${selectedDoc.name}" below`
+                    : 'Type a message below to start chatting'}
                 </div>
               </div>
             )}
           </div>
+
+          {/* Hidden File Input */}
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            accept=".pdf,.txt,.md,.js,.ts,.jsx,.tsx,.py,.java,.cpp,.json" 
+            style={{ display: 'none' }} 
+          />
 
           {/* Code Attachment */}
           {codeOpen && (
@@ -303,13 +393,90 @@ function WorkspaceChat() {
             </div>
           )}
 
-          {/* Input */}
+          {/* Input Area */}
           <div className="wsc-input-area">
+            {/* Code Attachment Button */}
             <button className={`wsc-context-badge ${code.trim() ? 'has-code' : ''}`} onClick={() => setCodeOpen(!codeOpen)} title={codeOpen ? 'Hide code panel' : 'Attach code for context'}>
               <LucideIcons.Code2 size={12} />
-              {code.trim() ? 'Code attached' : 'Add code'}
+              {code.trim() ? 'Code' : '+ Code'}
               <LucideIcons.ChevronUp size={10} style={{ transform: codeOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s' }} />
             </button>
+
+            {/* Document RAG Attachment Button */}
+            <div className="wsc-doc-picker-container">
+              <button 
+                className={`wsc-context-badge wsc-doc-badge ${selectedDoc ? 'has-doc' : ''}`} 
+                onClick={() => setDocDropdownOpen(!docDropdownOpen)} 
+                title="Attach Document for RAG Search"
+              >
+                <LucideIcons.FileText size={12} />
+                <span className="wsc-badge-doc-name">{selectedDoc ? selectedDoc.name : '+ Doc'}</span>
+                <LucideIcons.ChevronUp size={10} style={{ transform: docDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s' }} />
+              </button>
+
+              {/* Doc Selection Dropdown Menu */}
+              {docDropdownOpen && (
+                <div className="wsc-doc-dropdown">
+                  <div className="wsc-doc-dropdown-header">
+                    <span>Knowledge Documents</span>
+                    <button 
+                      type="button" 
+                      className="wsc-doc-add-btn" 
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingDoc}
+                    >
+                      <LucideIcons.Plus size={12} /> Upload
+                    </button>
+                  </div>
+
+                  <div className="wsc-doc-list">
+                    {documents.length === 0 ? (
+                      <div className="wsc-doc-empty-item">
+                        No documents uploaded yet. Upload a PDF or code file to chat with it.
+                      </div>
+                    ) : (
+                      documents.map(doc => (
+                        <div 
+                          key={doc.id} 
+                          className={`wsc-doc-item ${selectedDoc?.id === doc.id ? 'active' : ''}`}
+                          onClick={() => { setSelectedDoc(doc); setDocDropdownOpen(false); }}
+                        >
+                          <LucideIcons.FileText size={13} color={selectedDoc?.id === doc.id ? '#06b6d4' : 'var(--ws-text-muted)'} />
+                          <div className="wsc-doc-item-info">
+                            <span className="wsc-doc-item-title">{doc.name}</span>
+                            <span className="wsc-doc-item-meta">{doc.chunkCount} chunks • {doc.fileType.toUpperCase()}</span>
+                          </div>
+                          {selectedDoc?.id === doc.id && (
+                            <LucideIcons.Check size={13} color="#06b6d4" className="wsc-doc-check" />
+                          )}
+                          <button 
+                            type="button" 
+                            className="wsc-doc-del-btn" 
+                            onClick={(e) => handleDeleteDocument(doc.id, e)}
+                            title="Delete document"
+                          >
+                            <LucideIcons.Trash2 size={12} />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {selectedDoc && (
+                    <div className="wsc-doc-dropdown-footer">
+                      <button 
+                        type="button" 
+                        className="wsc-doc-clear-btn" 
+                        onClick={() => { setSelectedDoc(null); setDocDropdownOpen(false); }}
+                      >
+                        Detach Current Document
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="wsc-input-wrapper">
               <input 
                 ref={inputRef} 
@@ -318,7 +485,7 @@ function WorkspaceChat() {
                 value={chatInput} 
                 onChange={(e) => setChatInput(e.target.value)} 
                 onKeyDown={handleKeyDown} 
-                placeholder={isRecording ? 'Listening...' : `Ask ${activeMode.label}...`} 
+                placeholder={isRecording ? 'Listening...' : selectedDoc ? `Ask about ${selectedDoc.name}...` : `Ask ${activeMode.label}...`} 
                 disabled={loading} 
               />
             </div>

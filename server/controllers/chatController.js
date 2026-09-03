@@ -6,7 +6,7 @@ import { streamExplanation, streamComplexity, generateTestsAsJson, streamRoastCo
  * If `history` is provided, uses multi-turn chat (Type 2). Otherwise single-shot (Type 1).
  */
 export async function streamChat(req, res) {
-  const { code, language, mode, history } = req.body;
+  const { code, language, mode, history, docId } = req.body;
 
   if (!code) {
     return res.status(400).json({ error: 'Code is required' });
@@ -19,8 +19,8 @@ export async function streamChat(req, res) {
   try {
     // If history is provided, use multi-turn chat; otherwise single-shot analysis
     const stream = (history && history.length > 0)
-      ? streamChatByMode(code, language, mode || 'explain', history)
-      : streamByMode(code, language, mode || 'explain');
+      ? streamChatByMode(code, language, mode || 'explain', history, docId)
+      : streamByMode(code, language, mode || 'explain', [], docId);
 
     for await (const text of stream) {
       res.write(`data: ${JSON.stringify({ text })}\n\n`);

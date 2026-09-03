@@ -355,6 +355,10 @@ function Workspace() {
               <LucideIcons.MessageSquare size={15} color="#666" />
               <span>AI Coaching Chat</span>
             </button>
+            <button className="ws-mode-item" onClick={() => navigate('/ide')}>
+              <LucideIcons.Files size={15} color="#666" />
+              <span>Multi-File IDE</span>
+            </button>
           </div>
 
           <div className="ws-sidebar-section">

@@ -1,5 +1,6 @@
 import openai from '../config/ai.js';
 import { buildPrompt, buildChatContents } from './modeEngine.js';
+import { findRelevantChunks } from './ragService.js';
 
 const MODEL = 'gpt-4o-mini';
 
@@ -7,8 +8,16 @@ const MODEL = 'gpt-4o-mini';
  * Generic streaming function — uses the mode engine to pick the right system prompt.
  * Used for Type 1 (editor) modes — single-shot code analysis.
  */
-export async function* streamByMode(code, language, mode, history = []) {
-  const prompt = buildPrompt(mode, code, language);
+export async function* streamByMode(code, language, mode, history = [], docId = null) {
+  let prompt = buildPrompt(mode, code, language);
+
+  if (docId || mode === 'doc_chat') {
+    const userQuery = code || '';
+    const chunks = await findRelevantChunks(userQuery, docId, 4);
+    if (chunks.length > 0) {
+      prompt += `\n\n--- RELEVANT DOCUMENT EXCERPTS (Retrieved via RAG) ---\n${chunks.map((c, i) => `[Excerpt ${i + 1}]:\n${c.text}`).join('\n\n')}\n--- END DOCUMENT EXCERPTS ---`;
+    }
+  }
 
   let messages = [];
 
@@ -46,8 +55,25 @@ export async function* streamByMode(code, language, mode, history = []) {
  * Chat streaming function with conversation history.
  * Used for Type 2 (chat) modes — multi-turn conversations.
  */
-export async function* streamChatByMode(code, language, mode, history) {
+export async function* streamChatByMode(code, language, mode, history, docId = null) {
+  let docContext = '';
+  if (docId || mode === 'doc_chat') {
+    const userQuery = history?.[history.length - 1]?.content || code || '';
+    const chunks = await findRelevantChunks(userQuery, docId, 4);
+    if (chunks.length > 0) {
+      docContext = `\n\n--- RELEVANT DOCUMENT EXCERPTS (Retrieved via RAG) ---\n${chunks.map((c, i) => `[Excerpt ${i + 1}]:\n${c.text}`).join('\n\n')}\n--- END DOCUMENT EXCERPTS ---`;
+    }
+  }
+
   const messages = buildChatContents(mode, code, language, history);
+
+  if (docContext) {
+    if (messages[0] && messages[0].role === 'system') {
+      messages[0].content += docContext;
+    } else {
+      messages.unshift({ role: 'system', content: docContext });
+    }
+  }
 
   const responseStream = await openai.chat.completions.create({
     model: MODEL,

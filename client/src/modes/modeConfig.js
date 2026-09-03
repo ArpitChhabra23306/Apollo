@@ -117,6 +117,13 @@ export const CHAT_MODES = [
   //   description: 'No hand-holding. Expects excellence and precision.',
   // },
   {
+    key: 'doc_chat',
+    label: 'Doc Assistant',
+    lucideIcon: 'FileText',
+    color: '#06b6d4',
+    description: 'Upload PDFs, notes, or docs and chat directly with them using RAG.',
+  },
+  {
     key: 'persona_friendly',
     label: 'Friendly Buddy',
     lucideIcon: 'Heart',

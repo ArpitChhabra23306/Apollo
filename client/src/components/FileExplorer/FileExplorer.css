@@ -1,0 +1,308 @@
+/* ═══════════════════════════════════════
+   Apollo — File Explorer
+   Themed from the tokens defined in App.css so dark/light both work.
+   ═══════════════════════════════════════ */
+
+.fe-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--ws-sidebar-bg);
+  font-family: var(--ws-font-body);
+  overflow: hidden;
+}
+
+/* ── Header ── */
+.fe-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 0.5rem 0.55rem 0.85rem;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--ws-border);
+}
+
+.fe-header-title {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ws-text-muted);
+}
+
+.fe-header-actions {
+  display: flex;
+  gap: 1px;
+}
+
+.fe-header-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ws-text-secondary);
+  cursor: pointer;
+  transition: background var(--ws-transition), color var(--ws-transition);
+}
+
+.fe-header-actions button:hover {
+  background: var(--ws-glass-hover);
+  color: var(--ws-text);
+}
+
+.fe-header-actions button:focus-visible,
+.fe-node:focus-visible,
+.fe-context-menu button:focus-visible {
+  outline: 1px solid var(--ws-purple-light);
+  outline-offset: -1px;
+}
+
+/* ── Project name row ── */
+.fe-project-name {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ws-text-secondary);
+  border-bottom: 1px solid var(--ws-border);
+  flex-shrink: 0;
+}
+
+.fe-project-name span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Tree ── */
+.fe-tree {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.3rem 0 1.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(155, 64, 224, 0.18) transparent;
+}
+
+.fe-tree::-webkit-scrollbar { width: 5px; }
+.fe-tree::-webkit-scrollbar-thumb {
+  background: rgba(155, 64, 224, 0.18);
+  border-radius: 10px;
+}
+
+.fe-node-wrapper { display: block; }
+
+.fe-node {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.5rem 0.2rem 0;
+  font-size: 0.78rem;
+  color: var(--ws-text-secondary);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  border-left: 2px solid transparent;
+  transition: background var(--ws-transition), color var(--ws-transition);
+}
+
+.fe-node:hover {
+  background: var(--ws-glass-hover);
+  color: var(--ws-text);
+}
+
+.fe-node.active {
+  background: rgba(155, 64, 224, 0.14);
+  border-left-color: var(--ws-purple-light);
+  color: var(--ws-text);
+}
+
+/* Highlights the row whose context menu is open */
+.fe-node.menu-target {
+  background: var(--ws-glass-hover);
+  outline: 1px solid rgba(155, 64, 224, 0.35);
+  outline-offset: -1px;
+}
+
+.fe-node-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Fixed-width slot keeps files aligned with folders at the same depth */
+.fe-chevron-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  flex-shrink: 0;
+}
+
+.fe-chevron {
+  color: var(--ws-text-muted);
+  transition: transform 0.12s ease;
+}
+
+.fe-chevron.expanded {
+  transform: rotate(90deg);
+}
+
+.fe-children { display: block; }
+
+.fe-empty-folder {
+  font-size: 0.7rem;
+  font-style: italic;
+  color: var(--ws-text-muted);
+  padding: 0.15rem 0;
+  user-select: none;
+}
+
+/* ── Empty state ── */
+.fe-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.5rem 1rem;
+  font-size: 0.75rem;
+  color: var(--ws-text-muted);
+  text-align: center;
+}
+
+.fe-empty button {
+  background: rgba(155, 64, 224, 0.12);
+  border: 1px solid rgba(155, 64, 224, 0.3);
+  color: #c9a5f0;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--ws-radius-sm);
+  font-family: var(--ws-font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--ws-transition);
+}
+
+.fe-empty button:hover { background: rgba(155, 64, 224, 0.22); }
+
+/* ── Rename input ── */
+.fe-rename-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--ws-bg);
+  border: 1px solid var(--ws-purple-light);
+  border-radius: 3px;
+  color: var(--ws-text);
+  font-family: var(--ws-font-body);
+  font-size: 0.76rem;
+  padding: 0.1rem 0.3rem;
+  outline: none;
+}
+
+.fe-rename-input.has-error {
+  border-color: var(--ws-red);
+}
+
+.fe-rename-error {
+  font-size: 0.68rem;
+  color: var(--ws-red);
+  padding: 0.15rem 0 0.25rem 1.5rem;
+  line-height: 1.3;
+  white-space: normal;
+}
+
+/* ── Context menu ──
+   position: fixed so it escapes the sidebar's overflow: hidden. */
+.fe-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: transparent;
+}
+
+.fe-context-menu {
+  position: fixed;
+  z-index: 901;
+  min-width: 180px;
+  padding: 0.25rem;
+  background: var(--ws-surface);
+  border: 1px solid var(--ws-border-strong);
+  border-radius: var(--ws-radius-sm);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  animation: fe-menu-in 0.08s ease-out;
+}
+
+@keyframes fe-menu-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.fe-context-menu button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.4rem 0.55rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ws-text-secondary);
+  font-family: var(--ws-font-body);
+  font-size: 0.76rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--ws-transition), color var(--ws-transition);
+}
+
+.fe-context-menu button:hover {
+  background: rgba(155, 64, 224, 0.16);
+  color: var(--ws-text);
+}
+
+.fe-context-menu button kbd {
+  margin-left: auto;
+  font-family: var(--ws-font-mono);
+  font-size: 0.62rem;
+  color: var(--ws-text-muted);
+  background: var(--ws-glass);
+  border: 1px solid var(--ws-border);
+  border-radius: 3px;
+  padding: 0.05rem 0.25rem;
+}
+
+.fe-context-menu .fe-menu-danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ff8580;
+}
+
+.fe-menu-divider {
+  height: 1px;
+  margin: 0.2rem 0.1rem;
+  background: var(--ws-border);
+}
+
+/* ── Light mode ── */
+.light-mode .fe-node.active {
+  background: rgba(123, 47, 190, 0.1);
+}
+
+.light-mode .fe-context-menu {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+}
+
+.light-mode .fe-rename-input {
+  background: #fff;
+}

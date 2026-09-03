@@ -1,0 +1,128 @@
+/* ═══════════════════════════════════════
+   Apollo — Editor Tabs
+   ═══════════════════════════════════════ */
+
+.et-root {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  height: 34px;
+  background: var(--ws-sidebar-bg);
+  border-bottom: 1px solid var(--ws-border);
+  overflow: hidden;
+}
+
+.et-strip {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.et-strip::-webkit-scrollbar { height: 0; display: none; }
+
+.et-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 0.5rem 0 0.7rem;
+  min-width: 92px;
+  max-width: 200px;
+  flex-shrink: 0;
+  background: transparent;
+  border-right: 1px solid var(--ws-border);
+  border-top: 2px solid transparent;
+  color: var(--ws-text-muted);
+  font-family: var(--ws-font-body);
+  font-size: 0.76rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--ws-transition), color var(--ws-transition);
+}
+
+.et-tab:hover {
+  background: var(--ws-glass-hover);
+  color: var(--ws-text-secondary);
+}
+
+.et-tab.active {
+  background: var(--ws-panel);
+  border-top-color: var(--ws-purple-light);
+  color: var(--ws-text);
+}
+
+.et-tab:focus-visible {
+  outline: 1px solid var(--ws-purple-light);
+  outline-offset: -2px;
+}
+
+.et-tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.et-tab-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ws-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--ws-transition), background var(--ws-transition), color var(--ws-transition);
+}
+
+.et-tab:hover .et-tab-close,
+.et-tab.active .et-tab-close {
+  opacity: 1;
+}
+
+.et-tab-close:hover {
+  background: rgba(239, 68, 68, 0.18);
+  color: #ff8580;
+}
+
+/* ── Strip-level actions ── */
+.et-actions {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 0 0.35rem;
+  flex-shrink: 0;
+  border-left: 1px solid var(--ws-border);
+  background: var(--ws-sidebar-bg);
+}
+
+.et-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ws-text-muted);
+  cursor: pointer;
+  transition: background var(--ws-transition), color var(--ws-transition);
+}
+
+.et-actions button:hover {
+  background: var(--ws-glass-hover);
+  color: var(--ws-text);
+}
+
+/* ── Light mode ── */
+.light-mode .et-tab.active {
+  background: var(--ws-panel);
+}

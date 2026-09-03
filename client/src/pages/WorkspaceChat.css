@@ -378,3 +378,235 @@
   background: none;
   color: var(--ws-text-secondary);
 }
+
+/* ══════════════════════════════════
+   DOCUMENT RAG & DROPZONE STYLES
+   ══════════════════════════════════ */
+
+.wsc-doc-dropzone {
+  margin: 1.2rem auto;
+  max-width: 440px;
+  width: 100%;
+  padding: 1.8rem 1.5rem;
+  border: 2px dashed rgba(6, 182, 212, 0.35);
+  border-radius: var(--ws-radius-lg, 12px);
+  background: rgba(6, 182, 212, 0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.wsc-doc-dropzone:hover {
+  border-color: rgba(6, 182, 212, 0.7);
+  background: rgba(6, 182, 212, 0.08);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(6, 182, 212, 0.12);
+}
+
+.wsc-doc-dropzone h4 {
+  margin: 0.8rem 0 0.3rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ws-text);
+}
+
+.wsc-doc-dropzone p {
+  font-size: 0.76rem;
+  color: var(--ws-text-muted);
+  margin-bottom: 1rem;
+}
+
+.wsc-doc-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 1rem;
+  border: 1px solid rgba(6, 182, 212, 0.4);
+  border-radius: var(--ws-radius-pill, 9999px);
+  background: rgba(6, 182, 212, 0.15);
+  color: #06b6d4;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.wsc-doc-upload-btn:hover {
+  background: #06b6d4;
+  color: white;
+}
+
+.wsc-doc-picker-container {
+  position: relative;
+  display: inline-block;
+}
+
+.wsc-doc-badge {
+  border-color: rgba(6, 182, 212, 0.3);
+  color: #06b6d4;
+}
+
+.wsc-doc-badge.has-doc {
+  background: rgba(6, 182, 212, 0.15);
+  border-color: #06b6d4;
+  color: #06b6d4;
+  font-weight: 600;
+}
+
+.wsc-badge-doc-name {
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wsc-doc-dropdown {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: 290px;
+  background: var(--ws-panel, #18181b);
+  border: 1px solid var(--ws-border, #27272a);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  z-index: 100;
+  overflow: hidden;
+  animation: slideUp 0.15s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.wsc-doc-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid var(--ws-border, #27272a);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ws-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.wsc-doc-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(6, 182, 212, 0.15);
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  color: #06b6d4;
+  border-radius: 4px;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.68rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.wsc-doc-add-btn:hover {
+  background: #06b6d4;
+  color: white;
+}
+
+.wsc-doc-list {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 0.3rem;
+}
+
+.wsc-doc-empty-item {
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--ws-text-muted);
+  line-height: 1.4;
+}
+
+.wsc-doc-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.wsc-doc-item:hover {
+  background: var(--ws-glass-hover, rgba(255, 255, 255, 0.05));
+}
+
+.wsc-doc-item.active {
+  background: rgba(6, 182, 212, 0.12);
+}
+
+.wsc-doc-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.wsc-doc-item-title {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--ws-text, #f4f4f5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wsc-doc-item-meta {
+  font-size: 0.63rem;
+  color: var(--ws-text-muted, #71717a);
+}
+
+.wsc-doc-check {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.wsc-doc-del-btn {
+  background: transparent;
+  border: none;
+  color: var(--ws-text-muted);
+  cursor: pointer;
+  padding: 3px;
+  border-radius: 4px;
+  opacity: 0.6;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.wsc-doc-del-btn:hover {
+  opacity: 1;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.wsc-doc-dropdown-footer {
+  padding: 0.4rem 0.8rem;
+  border-top: 1px solid var(--ws-border, #27272a);
+  background: rgba(0, 0, 0, 0.15);
+  text-align: center;
+}
+
+.wsc-doc-clear-btn {
+  background: none;
+  border: none;
+  font-size: 0.68rem;
+  color: var(--ws-text-muted);
+  cursor: pointer;
+}
+
+.wsc-doc-clear-btn:hover {
+  color: #ef4444;
+  text-decoration: underline;
+}
+

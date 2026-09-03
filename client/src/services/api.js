@@ -7,12 +7,12 @@ export const API_BASE = import.meta.env.VITE_API_BASE || (import.meta.env.MODE =
  * Generic SSE streaming function — sends code + mode to the unified /api/ai/chat endpoint.
  * All mode-specific streaming goes through this single function.
  */
-export async function streamAIChat({ code, language, mode, history, onChunk, onDone, onError }) {
+export async function streamAIChat({ code, language, mode, history, docId, onChunk, onDone, onError }) {
   try {
     const response = await fetch(`${API_BASE}/api/ai/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, language, mode, history: history || [] }),
+      body: JSON.stringify({ code, language, mode, history: history || [], docId }),
     });
 
     if (!response.ok) {
@@ -192,6 +192,27 @@ export async function fetchGeneratedTests({ code, language }) {
 }
 
 /**
+ * Executes a whole multi-file project.
+ * `files` is [{ path, content }] with paths relative to the project root.
+ * Returns { stdout, stderr, exitCode, timedOut, truncated, entry }.
+ */
+export async function runProject({ files, language, entry, stdin }) {
+  const response = await fetch(`${API_BASE}/api/code/run-project`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ files, language, entry, stdin: stdin || '', action: 'run' }),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.details || result.error || 'Project execution failed');
+  }
+
+  return result;
+}
+
+/**
  * Executes code via the backend runner with optional stdin.
  * Returns { stdout, stderr, exitCode }.
  */
@@ -360,4 +381,50 @@ export async function streamReviewCode({ code, language, onChunk, onDone, onErro
     console.error(error);
     onError?.(error);
   }
+}
+
+/**
+ * Uploads a document (PDF, TXT, MD, Code) for RAG embedding.
+ */
+export async function uploadDocument(file, userId) {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (userId) formData.append('userId', userId);
+
+  const response = await fetch(`${API_BASE}/api/docs/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.error || result.details || 'Failed to upload document');
+  }
+  return result;
+}
+
+/**
+ * Fetches the user's uploaded documents.
+ */
+export async function getUserDocuments() {
+  const response = await fetch(`${API_BASE}/api/docs`);
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.error || 'Failed to fetch documents');
+  }
+  return result.documents || [];
+}
+
+/**
+ * Deletes an uploaded document and its embeddings.
+ */
+export async function deleteDocument(docId) {
+  const response = await fetch(`${API_BASE}/api/docs/${docId}`, {
+    method: 'DELETE',
+  });
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.error || 'Failed to delete document');
+  }
+  return result;
 }
