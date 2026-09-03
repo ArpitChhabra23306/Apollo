@@ -83,9 +83,10 @@ export default function DuelArena() {
     });
 
     s.on('duel:room-updated', (roomData) => {
+      if (!roomData) return;
       setRoom(roomData);
       setRoomError(null);
-      if (roomData.players) {
+      if (roomData.players && Array.isArray(roomData.players)) {
         const me = roomData.players.find((p) => p.id === (user?.id || user?._id));
         if (me) setIsHost(me.isHost);
       }
@@ -97,42 +98,58 @@ export default function DuelArena() {
         }
       }
       if (roomData.startTime && roomData.status === 'active') {
-        const endTime = roomData.startTime + (roomData.durationSeconds || 1800) * 1000;
+        const endTime = Number(roomData.startTime) + (Number(roomData.durationSeconds) || 1800) * 1000;
         setTimeLeft(Math.max(0, Math.floor((endTime - Date.now()) / 1000)));
       }
     });
 
-    s.on('duel:problem-set-success', ({ problem: prob }) => {
-      setProblem(prob);
-      toast.success('DSA Problem configured & locked!', { icon: '🔒' });
+    s.on('duel:problem-set-success', (payload) => {
+      if (payload?.problem) {
+        setProblem(payload.problem);
+        toast.success('DSA Problem configured & locked!', { icon: '🔒' });
+      }
     });
 
     s.on('duel:problem-ready', (meta) => {
-      toast.success(`Host locked in challenge: "${meta.title}" (${meta.difficulty})`);
+      if (meta?.title) {
+        toast.success(`Host locked in challenge: "${meta.title}" (${meta.difficulty})`);
+      }
     });
 
-    s.on('duel:countdown-tick', ({ count }) => {
+    s.on('duel:countdown-tick', (payload) => {
+      const count = payload?.count ?? 3;
       setCountdown(count);
       setRoom((prev) => (prev ? { ...prev, status: 'countdown' } : prev));
     });
 
-    s.on('duel:contest-started', ({ problem: contestProblem, startTime, durationSeconds }) => {
+    s.on('duel:contest-started', (payload) => {
+      if (!payload) return;
+      const { problem: contestProblem, startTime, durationSeconds } = payload;
       setCountdown(null);
-      setProblem(contestProblem);
-      setRoom((prev) => (prev ? { ...prev, status: 'active', problem: contestProblem, startTime } : prev));
-      const initialCode = contestProblem.starterCode?.[language] || contestProblem.starterCode?.javascript || '';
-      setCode(initialCode);
+      if (contestProblem) {
+        setProblem(contestProblem);
+        const initialCode = contestProblem.starterCode?.[language] || contestProblem.starterCode?.javascript || '';
+        setCode(initialCode);
+      }
+      setRoom((prev) => (prev ? { ...prev, status: 'active', problem: contestProblem, startTime } : { status: 'active', problem: contestProblem, startTime, players: [] }));
 
       // Start contest countdown timer
-      const endTime = startTime + durationSeconds * 1000;
-      setTimeLeft(Math.max(0, Math.floor((endTime - Date.now()) / 1000)));
+      if (startTime) {
+        const endTime = Number(startTime) + (Number(durationSeconds) || 1800) * 1000;
+        setTimeLeft(Math.max(0, Math.floor((endTime - Date.now()) / 1000)));
+      }
 
       toast.success('Contest Started! Good luck!', { icon: '🚀' });
     });
 
-    s.on('duel:progress-broadcast', ({ players, rankings: currentRankings }) => {
-      setRoom((prev) => (prev ? { ...prev, players } : prev));
-      setRankings(currentRankings);
+    s.on('duel:progress-broadcast', (payload) => {
+      if (!payload) return;
+      if (payload.players) {
+        setRoom((prev) => (prev ? { ...prev, players: payload.players } : prev));
+      }
+      if (payload.rankings) {
+        setRankings(payload.rankings);
+      }
     });
 
     s.on('duel:test-results', (results) => {
