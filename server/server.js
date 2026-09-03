@@ -8,9 +8,11 @@ import { Server } from 'socket.io';
 import aiRoutes from './routes/aiRoutes.js';
 import codeRoutes from './routes/codeRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import duelRoutes from './routes/duelRoutes.js';
 import connectDB from './config/db.js';
 import initInterviewSockets from './sockets/interviewSockets.js';
 import initTerminalSockets, { shutdownTerminalSessions } from './sockets/terminalSockets.js';
+import initDuelSockets from './sockets/duelSockets.js';
 import { sweepOrphanedSessions } from './services/projectRunner.js';
 import { detectToolchain, formatToolchainReport } from './services/toolchain.js';
 
@@ -77,6 +79,7 @@ app.use(express.json({ limit: '2mb' }));
 app.use('/api/auth', authRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/code', codeRoutes);
+app.use('/api/duel', duelRoutes);
 
 // ── Health Check ──
 // Reports toolchain availability so the client can annotate unsupported languages.
@@ -91,6 +94,7 @@ app.get('/health', async (req, res) => {
 // Initialize WebSockets
 initInterviewSockets(io);
 initTerminalSockets(io);
+initDuelSockets(io);
 
 // ── Start Server ──
 httpServer.listen(PORT, async () => {

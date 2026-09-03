@@ -363,6 +363,10 @@ function Workspace() {
 
           <div className="ws-sidebar-section">
             <span className="ws-section-label">IMMERSIVE</span>
+            <button className="ws-mode-item" onClick={() => navigate('/duel')}>
+              <LucideIcons.Swords size={15} color="#facc15" />
+              <span>Speed Code Duel</span>
+            </button>
             <button className="ws-mode-item" onClick={() => navigate('/interview')}>
               <LucideIcons.ShieldCheck size={15} color="#666" />
               <span>Interview Prep</span>

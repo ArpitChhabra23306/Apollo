@@ -13,6 +13,8 @@ import Interview from './pages/Interview';
 import FormalInterview from './pages/FormalInterview';
 import Focus from './pages/Focus';
 import Profile from './pages/Profile';
+import DuelLobby from './pages/DuelLobby';
+import DuelArena from './pages/DuelArena';
 
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuth();
@@ -38,6 +40,8 @@ function AppRoutes() {
         <Route path="/code-review" element={<ProtectedRoute><Review /></ProtectedRoute>} />
         <Route path="/interview" element={<ProtectedRoute><Interview /></ProtectedRoute>} />
         <Route path="/interview/join/:roomId" element={<ProtectedRoute><FormalInterview /></ProtectedRoute>} />
+        <Route path="/duel" element={<ProtectedRoute><DuelLobby /></ProtectedRoute>} />
+        <Route path="/duel/:roomId" element={<ProtectedRoute><DuelArena /></ProtectedRoute>} />
         <Route path="/focus" element={<ProtectedRoute><Focus /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
       </Routes>

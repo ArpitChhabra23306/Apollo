@@ -645,6 +645,9 @@ function IDE() {
 
           <div className="ide-activity-spacer" />
 
+          <button className="ide-activity-btn" onClick={() => navigate('/duel')} aria-label="Speed Code Duel" title="1v1 Speed Code Duel Arena">
+            <LucideIcons.Swords size={20} color="#facc15" />
+          </button>
           <button className="ide-activity-btn" onClick={() => navigate('/interview')} aria-label="Interview Prep">
             <LucideIcons.ShieldCheck size={20} />
           </button>
