@@ -23,6 +23,7 @@ export default function DuelArena() {
 
   // Room & Contest State
   const [room, setRoom] = useState(null);
+  const [roomError, setRoomError] = useState(null);
   const [isHost, setIsHost] = useState(location.state?.isHost ?? false);
   const [problem, setProblem] = useState(null);
   const [countdown, setCountdown] = useState(null);
@@ -74,6 +75,7 @@ export default function DuelArena() {
 
     s.on('duel:room-created', ({ roomId: createdId, room: roomData }) => {
       setRoom(roomData);
+      setRoomError(null);
       setIsHost(true);
       if (createdId !== cleanRoomId) {
         navigate(`/duel/${createdId}`, { replace: true, state: { isHost: true } });
@@ -82,6 +84,7 @@ export default function DuelArena() {
 
     s.on('duel:room-updated', (roomData) => {
       setRoom(roomData);
+      setRoomError(null);
       if (roomData.players) {
         const me = roomData.players.find((p) => p.id === (user?.id || user?._id));
         if (me) setIsHost(me.isHost);
@@ -143,6 +146,9 @@ export default function DuelArena() {
 
     s.on('duel:error', ({ message }) => {
       toast.error(message);
+      if (!room) {
+        setRoomError(message);
+      }
       setIsGenerating(false);
       setIsRunningTests(false);
       setIsSubmitting(false);
@@ -252,8 +258,52 @@ export default function DuelArena() {
     toast.success('Contest link copied to clipboard!');
   };
 
+  // ── RENDER: 0. Room Error or Loading ──
+  if (roomError) {
+    return (
+      <div className="duel-arena-root pre-lobby" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="pre-lobby-card" style={{ maxWidth: '420px', textAlign: 'center', alignItems: 'center', margin: 'auto' }}>
+          <LucideIcons.AlertTriangle size={36} color="#ef4444" />
+          <h3 style={{ margin: '0.5rem 0 0 0', color: '#ffffff' }}>Contest Room Error</h3>
+          <p style={{ color: '#888899', fontSize: '0.85rem' }}>{roomError}</p>
+          <div style={{ display: 'flex', gap: '0.8rem', marginTop: '1rem' }}>
+            <button type="button" className="duel-action-btn sample-btn" onClick={() => navigate('/duel')}>
+              <LucideIcons.ArrowLeft size={14} /> Back to Lobby
+            </button>
+            <button
+              type="button"
+              className="duel-action-btn submit-btn"
+              onClick={() => {
+                setRoomError(null);
+                socketRef.current?.emit('duel:create-room', {
+                  roomId: cleanRoomId,
+                  user,
+                  maxPlayers: 2,
+                  durationMinutes: 30,
+                });
+              }}
+            >
+              <LucideIcons.PlusCircle size={14} /> Create This Room
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!room) {
+    return (
+      <div className="duel-arena-root pre-lobby" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', margin: 'auto' }}>
+          <LucideIcons.Loader2 size={36} color="#9B40E0" className="ide-spin" />
+          <span style={{ fontSize: '0.9rem', color: '#aaaaaa' }}>Connecting to Contest Arena ({cleanRoomId})...</span>
+        </div>
+      </div>
+    );
+  }
+
   // ── RENDER: 1. Pre-Contest Lobby ──
-  if (!room || room.status === 'waiting') {
+  if (room.status === 'waiting') {
     return (
       <div className="duel-arena-root pre-lobby">
         <header className="duel-arena-topbar">
@@ -267,7 +317,7 @@ export default function DuelArena() {
               <LucideIcons.Copy size={11} />
             </span>
             <span className="room-cap-tag">
-              {room?.players?.length || 1} / {room?.maxPlayers || 2} Players
+              {room.players?.length || 1} / {room.maxPlayers || 2} Players
             </span>
           </div>
           <div className="topbar-right">
