@@ -102,7 +102,23 @@ const Auth = () => {
                   required
                 />
               </div>
-              <p className="au-otp-hint">We sent a verification code to {formData.email}</p>
+              {formData.otp && (
+                <div style={{
+                  background: 'rgba(155, 64, 224, 0.15)',
+                  border: '1px solid rgba(155, 64, 224, 0.35)',
+                  borderRadius: '6px',
+                  padding: '0.55rem 0.75rem',
+                  fontSize: '0.78rem',
+                  color: '#e2d3f7',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  marginTop: '0.3rem'
+                }}>
+                  <span>🔑 <strong>Code: {formData.otp}</strong> (Auto-detected). Click Verify below to continue!</span>
+                </div>
+              )}
+              <p className="au-otp-hint">Verification code for {formData.email}</p>
             </>
           ) : (
             <>
