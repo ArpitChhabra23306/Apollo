@@ -139,7 +139,8 @@ export default function initDuelSockets(io) {
 
     // ── 3. Host Sets Problem ──
     socket.on('duel:set-problem', ({ roomId, problem }) => {
-      const room = duelRooms.get(roomId);
+      const cleanRoomId = (roomId || '').toUpperCase().trim();
+      const room = duelRooms.get(cleanRoomId);
       if (!room) return socket.emit('duel:error', { message: 'Room not found.' });
 
       if (room.hostId !== (currentUser?.id || socket.id)) {
@@ -152,19 +153,20 @@ export default function initDuelSockets(io) {
       socket.emit('duel:problem-set-success', { problem });
 
       // Contestants only get metadata so it remains secret until start!
-      socket.to(roomId).emit('duel:problem-ready', {
+      socket.to(cleanRoomId).emit('duel:problem-ready', {
         title: problem.title,
         difficulty: problem.difficulty,
         topic: problem.topic,
         timeLimitMinutes: problem.timeLimitMinutes,
       });
 
-      console.log(`[Duel] Problem "${problem.title}" set by host for room ${roomId}`);
+      console.log(`[Duel] Problem "${problem.title}" set by host for room ${cleanRoomId}`);
     });
 
     // ── 4. Host Starts Contest ──
     socket.on('duel:start-contest', ({ roomId }) => {
-      const room = duelRooms.get(roomId);
+      const cleanRoomId = (roomId || '').toUpperCase().trim();
+      const room = duelRooms.get(cleanRoomId);
       if (!room) return socket.emit('duel:error', { message: 'Room not found.' });
 
       if (room.hostId !== (currentUser?.id || socket.id)) {
@@ -183,32 +185,33 @@ export default function initDuelSockets(io) {
 
       // 3-second synchronized countdown
       let count = 3;
-      duelNamespace.to(roomId).emit('duel:countdown-tick', { count });
+      duelNamespace.to(cleanRoomId).emit('duel:countdown-tick', { count });
 
       const countdownInterval = setInterval(() => {
         count--;
         if (count > 0) {
-          duelNamespace.to(roomId).emit('duel:countdown-tick', { count });
+          duelNamespace.to(cleanRoomId).emit('duel:countdown-tick', { count });
         } else {
           clearInterval(countdownInterval);
           room.status = 'active';
           room.startTime = Date.now();
 
           // UNLOCK PROBLEM TO ALL CONTESTANTS SIMULTANEOUSLY!
-          duelNamespace.to(roomId).emit('duel:contest-started', {
+          duelNamespace.to(cleanRoomId).emit('duel:contest-started', {
             problem: room.problem,
             startTime: room.startTime,
             durationSeconds: room.durationSeconds,
           });
 
-          console.log(`[Duel] Contest started in room ${roomId}! Problem unlocked for all ${room.players.length} players.`);
+          console.log(`[Duel] Contest started in room ${cleanRoomId}! Problem unlocked for all ${room.players.length} players.`);
         }
       }, 1000);
     });
 
     // ── 5. Run / Submit Code ──
     socket.on('duel:submit-code', async ({ roomId, code, language, sampleOnly = false }) => {
-      const room = duelRooms.get(roomId);
+      const cleanRoomId = (roomId || '').toUpperCase().trim();
+      const room = duelRooms.get(cleanRoomId);
       if (!room || !room.problem) {
         return socket.emit('duel:test-results', { ok: false, error: 'Room or problem not found' });
       }
@@ -218,7 +221,7 @@ export default function initDuelSockets(io) {
 
       if (!sampleOnly) {
         player.status = 'testing';
-        duelNamespace.to(roomId).emit('duel:player-status-update', {
+        duelNamespace.to(cleanRoomId).emit('duel:player-status-update', {
           playerId: player.id,
           status: 'testing',
         });
@@ -256,7 +259,7 @@ export default function initDuelSockets(io) {
         const rankings = calculateRankings(room.players);
 
         // Broadcast live progress bars & leaderboard to all contestants
-        duelNamespace.to(roomId).emit('duel:progress-broadcast', {
+        duelNamespace.to(cleanRoomId).emit('duel:progress-broadcast', {
           players: room.players,
           rankings,
           updatedPlayer: player,
@@ -266,7 +269,7 @@ export default function initDuelSockets(io) {
         const allCompleted = room.players.every((p) => p.status === 'completed');
         if (allCompleted) {
           room.status = 'finished';
-          duelNamespace.to(roomId).emit('duel:contest-finished', {
+          duelNamespace.to(cleanRoomId).emit('duel:contest-finished', {
             rankings,
             finishedReason: 'all_completed',
           });
@@ -276,13 +279,14 @@ export default function initDuelSockets(io) {
 
     // ── 6. Host Ends Contest Early ──
     socket.on('duel:end-contest', ({ roomId }) => {
-      const room = duelRooms.get(roomId);
+      const cleanRoomId = (roomId || '').toUpperCase().trim();
+      const room = duelRooms.get(cleanRoomId);
       if (!room) return;
       if (room.hostId !== (currentUser?.id || socket.id)) return;
 
       room.status = 'finished';
       const rankings = calculateRankings(room.players);
-      duelNamespace.to(roomId).emit('duel:contest-finished', {
+      duelNamespace.to(cleanRoomId).emit('duel:contest-finished', {
         rankings,
         finishedReason: 'host_ended',
       });
