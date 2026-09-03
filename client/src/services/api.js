@@ -264,11 +264,14 @@ export async function loginUser({ email, password }) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
+  const data = await response.json();
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Login failed');
+    const error = new Error(data.message || 'Login failed');
+    error.unverified = data.unverified;
+    error.debugOtp = data.debugOtp;
+    throw error;
   }
-  return response.json();
+  return data;
 }
 
 /**

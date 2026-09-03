@@ -44,8 +44,12 @@ const Auth = () => {
           toast.success('Logged in successfully');
           navigate(from, { replace: true });
         } catch (err) {
-          if (err.message.includes('not verified')) {
-            toast.error(err.message);
+          if (err.message?.includes('not verified') || err.unverified) {
+            toast.error(err.message || 'Account not verified');
+            if (err.debugOtp) {
+              setFormData((prev) => ({ ...prev, otp: err.debugOtp }));
+              toast.success(`Verification OTP: ${err.debugOtp}`, { duration: 9000, icon: '🔑' });
+            }
             setShowOtp(true);
           } else {
             throw err;
@@ -58,6 +62,10 @@ const Auth = () => {
           password: formData.password
         });
         toast.success(res.message);
+        if (res.debugOtp) {
+          setFormData((prev) => ({ ...prev, otp: res.debugOtp }));
+          toast.success(`Verification OTP: ${res.debugOtp}`, { duration: 9000, icon: '🔑' });
+        }
         setShowOtp(true);
       }
     } catch (error) {

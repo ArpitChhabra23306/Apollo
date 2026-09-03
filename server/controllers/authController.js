@@ -86,7 +86,25 @@ export const signup = async (req, res) => {
   try {
     let user = await User.findOne({ email });
     if (user) {
-      return res.status(400).json({ message: 'User already exists' });
+      if (user.isVerified) {
+        return res.status(400).json({ message: 'User already exists and is verified. Please log in.' });
+      }
+      // If user exists but is not verified, refresh OTP and allow them to proceed
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(password, salt);
+      user.username = username || user.username;
+      user.otp = generateOTP();
+      user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+      await user.save();
+
+      sendEmail(email, 'Apollo - Verification OTP', `Your verification OTP is: ${user.otp}. It expires in 10 minutes.`);
+      console.log(`[DEBUG] Refreshed OTP for ${email} is: ${user.otp}`);
+
+      return res.status(200).json({
+        message: 'Signup updated. Please verify OTP.',
+        email: user.email,
+        debugOtp: user.otp,
+      });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -113,7 +131,11 @@ export const signup = async (req, res) => {
       console.log(`⚠️ Email credentials missing. OTP for ${email} is ${otp}`);
     }
 
-    res.status(201).json({ message: 'Signup successful. Please verify OTP.', email: user.email });
+    res.status(201).json({
+      message: 'Signup successful. Please verify OTP.',
+      email: user.email,
+      debugOtp: otp,
+    });
   } catch (error) {
     console.error('Signup error:', error);
     res.status(500).json({ message: 'Server error during signup', error: error.message });
@@ -186,7 +208,8 @@ export const login = async (req, res) => {
 
       return res.status(403).json({ 
         message: 'Account not verified. A new OTP has been sent to your email.',
-        unverified: true 
+        unverified: true,
+        debugOtp: otp,
       });
     }
 
