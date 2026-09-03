@@ -91,6 +91,14 @@ export default function DuelArena() {
       }
       if (roomData.problem) {
         setProblem(roomData.problem);
+        if (!code && roomData.status === 'active') {
+          const initialCode = roomData.problem.starterCode?.[language] || roomData.problem.starterCode?.javascript || '';
+          setCode(initialCode);
+        }
+      }
+      if (roomData.startTime && roomData.status === 'active') {
+        const endTime = roomData.startTime + (roomData.durationSeconds || 1800) * 1000;
+        setTimeLeft(Math.max(0, Math.floor((endTime - Date.now()) / 1000)));
       }
     });
 
@@ -105,11 +113,13 @@ export default function DuelArena() {
 
     s.on('duel:countdown-tick', ({ count }) => {
       setCountdown(count);
+      setRoom((prev) => (prev ? { ...prev, status: 'countdown' } : prev));
     });
 
     s.on('duel:contest-started', ({ problem: contestProblem, startTime, durationSeconds }) => {
       setCountdown(null);
       setProblem(contestProblem);
+      setRoom((prev) => (prev ? { ...prev, status: 'active', problem: contestProblem, startTime } : prev));
       const initialCode = contestProblem.starterCode?.[language] || contestProblem.starterCode?.javascript || '';
       setCode(initialCode);
 
