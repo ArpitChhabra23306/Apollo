@@ -15,6 +15,7 @@ import Focus from './pages/Focus';
 import Profile from './pages/Profile';
 import DuelLobby from './pages/DuelLobby';
 import DuelArena from './pages/DuelArena';
+import ResumeInterviewPrep from './pages/ResumeInterviewPrep';
 
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuth();
@@ -39,6 +40,7 @@ function AppRoutes() {
         <Route path="/roast" element={<ProtectedRoute><Roast /></ProtectedRoute>} />
         <Route path="/code-review" element={<ProtectedRoute><Review /></ProtectedRoute>} />
         <Route path="/interview" element={<ProtectedRoute><Interview /></ProtectedRoute>} />
+        <Route path="/interview/resume-prep" element={<ProtectedRoute><ResumeInterviewPrep /></ProtectedRoute>} />
         <Route path="/interview/join/:roomId" element={<ProtectedRoute><FormalInterview /></ProtectedRoute>} />
         <Route path="/duel" element={<ProtectedRoute><DuelLobby /></ProtectedRoute>} />
         <Route path="/duel/:roomId" element={<ProtectedRoute><DuelArena /></ProtectedRoute>} />

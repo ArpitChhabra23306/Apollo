@@ -431,3 +431,61 @@ export async function deleteDocument(docId) {
   }
   return result;
 }
+
+/**
+ * Uploads a resume (PDF, TXT, MD) and generates 360° technical interview questions based on candidate projects.
+ */
+export async function uploadResumeForInterview({ file, role, experienceLevel, focusCategory, difficulty }) {
+  const formData = new FormData();
+  formData.append('resume', file);
+  if (role) formData.append('role', role);
+  if (experienceLevel) formData.append('experienceLevel', experienceLevel);
+  if (focusCategory) formData.append('focusCategory', focusCategory);
+  if (difficulty) formData.append('difficulty', difficulty);
+
+  const response = await fetch(`${API_BASE}/api/resume-interview/upload-resume`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.error || 'Failed to upload resume and generate interview questions');
+  }
+  return result.data;
+}
+
+/**
+ * Analyzes a public GitHub repository link and generates custom project-based technical interview questions.
+ */
+export async function analyzeGitHubRepoForInterview({ repoUrl, role, experienceLevel, focusCategory, difficulty }) {
+  const response = await fetch(`${API_BASE}/api/resume-interview/github-repo`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ repoUrl, role, experienceLevel, focusCategory, difficulty }),
+  });
+
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.error || 'Failed to analyze GitHub repository');
+  }
+  return result.data;
+}
+
+/**
+ * Generates custom project questions on demand with filters.
+ */
+export async function generateCustomProjectQuestions({ projects, candidate, focusCategory, difficulty, role }) {
+  const response = await fetch(`${API_BASE}/api/resume-interview/custom-questions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projects, candidate, focusCategory, difficulty, role }),
+  });
+
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.error || 'Failed to generate additional questions');
+  }
+  return result.questions || [];
+}
+
