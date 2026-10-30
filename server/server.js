@@ -9,6 +9,8 @@ import aiRoutes from './routes/aiRoutes.js';
 import codeRoutes from './routes/codeRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import duelRoutes from './routes/duelRoutes.js';
+import docRoutes from './routes/docRoutes.js';
+import resumeInterviewRoutes from './routes/resumeInterviewRoutes.js';
 import connectDB from './config/db.js';
 import initInterviewSockets from './sockets/interviewSockets.js';
 import initTerminalSockets, { shutdownTerminalSessions } from './sockets/terminalSockets.js';
@@ -80,6 +82,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/code', codeRoutes);
 app.use('/api/duel', duelRoutes);
+app.use('/api/docs', docRoutes);
+app.use('/api/resume-interview', resumeInterviewRoutes);
 
 // ── Health Check ──
 // Reports toolchain availability so the client can annotate unsupported languages.
