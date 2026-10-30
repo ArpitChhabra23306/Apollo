@@ -4,6 +4,8 @@ import ReactMarkdown from 'react-markdown';
 import * as LucideIcons from 'lucide-react';
 import CodeEditor from '../components/CodeEditor/CodeEditor';
 import ImmersiveNav from '../components/ImmersiveNav';
+import TabSwitchWarningModal from '../components/TabSwitchWarningModal/TabSwitchWarningModal';
+import useTabFocusTracker from '../hooks/useTabFocusTracker';
 import { streamAIChat, runCode } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import './Interview.css';
@@ -13,7 +15,8 @@ const PHASES = {
   SETUP: 'setup',
   CODING: 'coding',
   FOLLOWUP: 'followup',
-  RESULT: 'result'
+  RESULT: 'result',
+  DISQUALIFIED: 'disqualified',
 };
 
 const LANGUAGES = [
@@ -44,6 +47,25 @@ function Interview() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const chatEndRef = useRef(null);
+
+  // ── Tab & Window switch proctoring ──
+  const isInterviewActive = phase === PHASES.CODING || phase === PHASES.FOLLOWUP;
+  const {
+    warningCount,
+    showWarningModal,
+    setShowWarningModal,
+    violations,
+    dismissModal,
+    resetWarnings,
+  } = useTabFocusTracker({
+    isActive: isInterviewActive,
+    maxWarnings: 3,
+    alertSound: true,
+    onDisqualify: () => {
+      setPhase(PHASES.DISQUALIFIED);
+      setShowWarningModal(false);
+    },
+  });
 
   // ── Phase transition helper ──
   const handleCompleteCoding = () => {
@@ -151,12 +173,17 @@ function Interview() {
     setLoading(true);
     const evalHistory = (msgs || messages).map(m => ({ role: m.role, content: m.content }));
     let evalText = '';
+
+    const proctorAudit = warningCount > 0
+      ? `\n\nPROCTORING INTEGRITY AUDIT: The candidate switched tabs or lost window focus ${warningCount} time(s) during this assessment. Consider this integrity violation in your assessment and hiring verdict.`
+      : `\n\nPROCTORING INTEGRITY AUDIT: 0 tab switches detected. Full candidate focus and assessment integrity maintained.`;
+
     await streamAIChat({
       code,
       language,
       mode: 'interview_evaluator',
       history: [
-        { role: 'user', content: `Here is the problem:\n${problem}\n\nHere is the candidate's code:\n\`\`\`${language}\n${code}\n\`\`\`\n\nHere is the follow-up discussion:\n${evalHistory.map(m => `${m.role === 'user' ? 'CANDIDATE' : 'INTERVIEWER'}: ${m.content}`).join('\n\n')}\n\nPlease evaluate this candidate.` }
+        { role: 'user', content: `Here is the problem:\n${problem}\n\nHere is the candidate's code:\n\`\`\`${language}\n${code}\n\`\`\`\n\nHere is the follow-up discussion:\n${evalHistory.map(m => `${m.role === 'user' ? 'CANDIDATE' : 'INTERVIEWER'}: ${m.content}`).join('\n\n')}${proctorAudit}\n\nPlease evaluate this candidate.` }
       ],
       onChunk: (chunk) => {
         evalText += chunk;
@@ -169,6 +196,7 @@ function Interview() {
 
   // ── Retry interview ──
   const retryInterview = () => {
+    resetWarnings();
     setPhase(PHASES.SETUP);
     setDifficulty('Medium');
     setTimeLeft(45 * 60);
@@ -294,6 +322,7 @@ function Interview() {
           <div className="iv-rule"><LucideIcons.Clock size={13} /> <span>45-minute countdown — cannot be paused</span></div>
           <div className="iv-rule"><LucideIcons.Terminal size={13} /> <span>Limited to <strong>{maxRuns}</strong> code executions</span></div>
           <div className="iv-rule"><LucideIcons.MessageSquare size={13} /> <span>Follow-up behavioral questions after submission</span></div>
+          <div className="iv-rule"><LucideIcons.ShieldAlert size={13} /> <span>Tab & window switching is <strong>strictly monitored</strong> and flagged</span></div>
           <div className="iv-rule"><LucideIcons.Award size={13} /> <span>AI Hiring Committee evaluates your performance</span></div>
         </div>
       </div>
@@ -414,6 +443,20 @@ function Interview() {
         <h2>Interview Complete</h2>
         <p>Your performance has been evaluated by the Hiring Committee.</p>
       </div>
+
+      <div className={`iv-integrity-card ${warningCount > 0 ? 'flagged' : 'verified'}`}>
+        <div className="iv-integrity-icon">
+          {warningCount > 0 ? <LucideIcons.ShieldAlert size={22} /> : <LucideIcons.ShieldCheck size={22} />}
+        </div>
+        <div className="iv-integrity-info">
+          <h4>{warningCount > 0 ? `${warningCount} Tab Switch Violation(s) Logged` : 'Assessment Integrity: Verified'}</h4>
+          <p>
+            {warningCount > 0
+              ? 'Candidate navigated away from the interview tab or window during the test. Violations were logged for evaluation.'
+              : 'Zero tab or window switches detected throughout the entire interview session.'}
+          </p>
+        </div>
+      </div>
       <div className="iv-result-body scrollable">
         {result ? (
           <ReactMarkdown>{result}</ReactMarkdown>
@@ -435,6 +478,65 @@ function Interview() {
     </div>
   );
 
+  const renderDisqualified = () => (
+    <div className="iv-result-card iv-disqualified-card">
+      <div className="iv-result-header iv-disqualified-header">
+        <div className="iv-disqualified-icon-wrap">
+          <LucideIcons.ShieldAlert size={56} color="#ef4444" />
+        </div>
+        <h2 style={{ color: '#f87171' }}>Interview Terminated</h2>
+        <span className="iv-disqualified-tag">DISQUALIFIED · MALPRACTICE DETECTED</span>
+        <p style={{ marginTop: '8px' }}>
+          You navigated away from the interview window 3 times, violating assessment integrity policies.
+        </p>
+      </div>
+
+      <div className="iv-result-body scrollable">
+        <div className="iv-verdict-box">
+          <div className="iv-verdict-title">HIRING COMMITTEE VERDICT</div>
+          <div className="iv-verdict-badge">AUTOMATIC NO HIRE (0% INTEGRITY SCORE)</div>
+          <p className="iv-verdict-text">
+            The candidate repeatedly lost window and tab focus during a proctored technical challenge.
+            Assessment protocol stipulates immediate termination and disqualification upon 3 integrity infractions.
+          </p>
+        </div>
+
+        {violations && violations.length > 0 && (
+          <div className="iv-violations-log-card">
+            <h4><LucideIcons.Clock size={14} /> Recorded Violation Trail</h4>
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Timestamp</th>
+                  <th>Infraction Reason</th>
+                </tr>
+              </thead>
+              <tbody>
+                {violations.map((v) => (
+                  <tr key={v.id}>
+                    <td style={{ color: '#ef4444', fontWeight: 'bold' }}>Violation #{v.count}</td>
+                    <td style={{ fontFamily: 'monospace' }}>{v.timestamp}</td>
+                    <td>{v.reason}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="iv-result-actions">
+        <button className="iv-retry-btn" onClick={retryInterview}>
+          <LucideIcons.RotateCcw size={14} /> Restart Interview
+        </button>
+        <button className="iv-exit-btn" onClick={() => navigate('/workspace')}>
+          <LucideIcons.ArrowLeft size={14} /> Back to Workspace
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="iv-root">
       <ImmersiveNav
@@ -444,24 +546,52 @@ function Interview() {
           phase === PHASES.SETUP ? 'Configure your session' :
           phase === PHASES.CODING ? `Coding · ${difficulty}` :
           phase === PHASES.FOLLOWUP ? 'Behavioral Follow-up' :
+          phase === PHASES.DISQUALIFIED ? 'Terminated · Disqualified' :
           'Evaluation'
         }
         timer={phase === PHASES.CODING ? formatTime(timeLeft) : null}
         onExit={() => {
-          if (phase === PHASES.SETUP || window.confirm("Quitting now will mark this session as 'Incomplete'. Are you sure?")) {
+          if (phase === PHASES.SETUP || phase === PHASES.DISQUALIFIED || window.confirm("Quitting now will mark this session as 'Incomplete'. Are you sure?")) {
             navigate('/workspace');
           }
         }}
         actions={
-          phase === PHASES.CODING && (
+          phase === PHASES.DISQUALIFIED ? (
+            <div className="iv-proctor-pill warning" style={{ background: 'rgba(239,68,68,0.2)', color: '#ef4444', borderColor: '#ef4444' }}>
+              <LucideIcons.Ban size={13} />
+              <span>Disqualified</span>
+            </div>
+          ) : (phase === PHASES.CODING || phase === PHASES.FOLLOWUP) && (
             <div className="iv-nav-actions">
-              <button className="iv-nav-run-btn" onClick={handleRun} disabled={runCount >= maxRuns || running}>
-                {running ? <LucideIcons.Loader2 size={13} className="iv-spin" /> : <LucideIcons.Play size={13} />}
-                {running ? 'Running...' : `Run (${maxRuns - runCount})`}
-              </button>
-              <button className="iv-nav-submit-btn" onClick={handleCompleteCoding}>
-                <LucideIcons.CheckSquare size={13} /> Submit Solution
-              </button>
+              <div 
+                className={`iv-proctor-pill ${warningCount > 0 ? 'warning' : 'clean'}`}
+                onClick={() => warningCount > 0 && setShowWarningModal(true)}
+                title={warningCount > 0 ? `${warningCount} tab switch warning(s). Click to view details.` : 'Proctoring Active: Tab and window switches are tracked'}
+              >
+                {warningCount > 0 ? (
+                  <>
+                    <LucideIcons.AlertTriangle size={13} />
+                    <span>{warningCount} Warning{warningCount > 1 ? 's' : ''}</span>
+                  </>
+                ) : (
+                  <>
+                    <LucideIcons.ShieldCheck size={13} />
+                    <span>Proctor Active</span>
+                  </>
+                )}
+              </div>
+
+              {phase === PHASES.CODING && (
+                <>
+                  <button className="iv-nav-run-btn" onClick={handleRun} disabled={runCount >= maxRuns || running}>
+                    {running ? <LucideIcons.Loader2 size={13} className="iv-spin" /> : <LucideIcons.Play size={13} />}
+                    {running ? 'Running...' : `Run (${maxRuns - runCount})`}
+                  </button>
+                  <button className="iv-nav-submit-btn" onClick={handleCompleteCoding}>
+                    <LucideIcons.CheckSquare size={13} /> Submit Solution
+                  </button>
+                </>
+              )}
             </div>
           )
         }
@@ -473,7 +603,20 @@ function Interview() {
         {phase === PHASES.CODING && renderCoding()}
         {phase === PHASES.FOLLOWUP && renderFollowup()}
         {phase === PHASES.RESULT && renderResult()}
+        {phase === PHASES.DISQUALIFIED && renderDisqualified()}
       </main>
+
+      <TabSwitchWarningModal
+        isOpen={showWarningModal}
+        warningCount={warningCount}
+        maxWarnings={3}
+        onAcknowledge={dismissModal}
+        onDisqualify={() => {
+          setPhase(PHASES.DISQUALIFIED);
+          dismissModal();
+        }}
+        violations={violations}
+      />
     </div>
   );
 }

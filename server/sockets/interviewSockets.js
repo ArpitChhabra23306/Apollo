@@ -6,7 +6,7 @@ export default function initInterviewSockets(io) {
     socket.on('join-room', (roomId, userId) => {
       socket.join(roomId);
       console.log(`[Socket.io] User ${userId} (${socket.id}) joined room ${roomId}`);
-      
+    
       // Notify others in the room
       socket.to(roomId).emit('user-connected', userId, socket.id);
 
@@ -42,6 +42,15 @@ export default function initInterviewSockets(io) {
     // Question Synchronization
     socket.on('question-update', (questionText, roomId) => {
       socket.to(roomId).emit('question-update', questionText);
+    });
+
+    // Proctoring & Tab Switch Synchronization
+    socket.on('tab-switch-warning', (data, roomId) => {
+      socket.to(roomId).emit('tab-switch-warning', data);
+    });
+
+    socket.on('candidate-disqualified', (data, roomId) => {
+      socket.to(roomId).emit('candidate-disqualified', data);
     });
   });
 }
