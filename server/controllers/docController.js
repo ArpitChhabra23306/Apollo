@@ -1,10 +1,7 @@
-import { createRequire } from 'module';
+import { PDFParse } from 'pdf-parse';
 import { Document, DocumentChunk } from '../models/Document.js';
 import { chunkText, generateEmbeddings } from '../services/ragService.js';
 import path from 'path';
-
-const require = createRequire(import.meta.url);
-const pdfParse = require('pdf-parse');
 
 /**
  * POST /api/docs/upload
@@ -23,8 +20,12 @@ export async function uploadDocument(req, res) {
 
     // 1. Extract text based on file format
     if (mimetype === 'application/pdf' || ext === 'pdf') {
-      const pdfData = await pdfParse(buffer);
-      rawText = pdfData.text || '';
+      const parser = new PDFParse({ data: buffer });
+      const pdfData = await parser.getText();
+      if (typeof parser.destroy === 'function') {
+        try { await parser.destroy(); } catch {}
+      }
+      rawText = pdfData?.text || '';
     } else {
       // Text, Markdown, Source code, JSON
       rawText = buffer.toString('utf-8');
