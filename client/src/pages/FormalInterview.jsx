@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
+import toast from 'react-hot-toast';
 import * as LucideIcons from 'lucide-react';
 import CodeEditor from '../components/CodeEditor/CodeEditor';
+import TabSwitchWarningModal from '../components/TabSwitchWarningModal/TabSwitchWarningModal';
+import useTabFocusTracker from '../hooks/useTabFocusTracker';
+import { useAuth } from '../context/AuthContext';
 import { API_BASE } from '../services/api';
 import './Interview.css';
 
@@ -28,12 +32,57 @@ function FormalInterview() {
   // `host=true` indicates the user is the Interviewer who created the room
   const isHost = searchParams.get('host') === 'true';
   const role = isHost ? 'Interviewer' : 'Student';
+  const { user } = useAuth();
 
   const [socket, setSocket] = useState(null);
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
   const [micMuted, setMicMuted] = useState(false);
   const [videoOff, setVideoOff] = useState(false);
+  const [peerWarnings, setPeerWarnings] = useState(0);
+  const [peerDisqualified, setPeerDisqualified] = useState(false);
+
+  // ── Tab & Window Focus Tracking ──
+  const {
+    warningCount,
+    isDisqualified,
+    showWarningModal,
+    setShowWarningModal,
+    violations,
+    dismissModal,
+  } = useTabFocusTracker({
+    isActive: true,
+    maxWarnings: 3,
+    alertSound: true,
+    onTabSwitch: ({ count, violation }) => {
+      if (socketRef.current) {
+        socketRef.current.emit(
+          'tab-switch-warning',
+          {
+            user: user?.username || (isHost ? 'Interviewer' : 'Candidate'),
+            role,
+            count,
+            timestamp: violation?.timestamp || new Date().toLocaleTimeString(),
+          },
+          roomId
+        );
+      }
+    },
+    onDisqualify: ({ count, violation }) => {
+      if (socketRef.current) {
+        socketRef.current.emit(
+          'candidate-disqualified',
+          {
+            user: user?.username || (isHost ? 'Interviewer' : 'Candidate'),
+            role,
+            count,
+            timestamp: violation?.timestamp || new Date().toLocaleTimeString(),
+          },
+          roomId
+        );
+      }
+    },
+  });
   
   const [code, setCode] = useState('// Write your code here...\n');
   const [language, setLanguage] = useState('javascript');
@@ -159,6 +208,44 @@ function FormalInterview() {
     s.on('language-change', (newLang) => setLanguage(newLang));
     s.on('question-update', (newQ) => setQuestion(newQ));
 
+    // ── Proctoring & Tab Switch Alert ──
+    s.on('tab-switch-warning', (data) => {
+      setPeerWarnings(data.count);
+      toast.error(
+        `⚠️ ${data.role || data.user} navigated away from the interview tab! (Warning #${data.count})`,
+        {
+          id: `tab-switch-peer-${data.count}`,
+          duration: 5000,
+          style: {
+            background: '#1e1014',
+            color: '#f87171',
+            border: '1px solid #ef4444',
+            fontWeight: 600,
+            fontSize: '13px',
+          },
+        }
+      );
+    });
+
+    s.on('candidate-disqualified', (data) => {
+      setPeerDisqualified(true);
+      setPeerWarnings(3);
+      toast.error(
+        `🚨 ${data.role || data.user} has been DISQUALIFIED! Reached 3 tab switch warnings.`,
+        {
+          id: 'candidate-disqualified-toast',
+          duration: 8000,
+          style: {
+            background: '#20080b',
+            color: '#ff8585',
+            border: '1px solid #ef4444',
+            fontWeight: 700,
+            fontSize: '13px',
+          },
+        }
+      );
+    });
+
     return () => {
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach(track => track.stop());
@@ -213,7 +300,27 @@ function FormalInterview() {
           <h2 style={{ fontSize: '20px', margin: 0, fontFamily: 'var(--ws-font-display, "Playfair Display", serif)', fontStyle: 'italic', fontWeight: 400 }}>Formal Interview ({role})</h2>
         </div>
         
-        <div style={{ display: 'flex', gap: '12px' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          {/* Proctoring Status Pill */}
+          <div 
+            className={`iv-proctor-pill ${warningCount > 0 ? 'warning' : 'clean'}`}
+            onClick={() => warningCount > 0 && setShowWarningModal(true)}
+            title={warningCount > 0 ? `${warningCount} warnings logged. Click to view.` : 'Proctoring active: Tab & window switching is monitored'}
+            style={{ cursor: warningCount > 0 ? 'pointer' : 'default' }}
+          >
+            {warningCount > 0 ? (
+              <>
+                <LucideIcons.AlertTriangle size={13} />
+                <span>{warningCount} Warning{warningCount > 1 ? 's' : ''}</span>
+              </>
+            ) : (
+              <>
+                <LucideIcons.ShieldCheck size={13} />
+                <span>Proctor Active</span>
+              </>
+            )}
+          </div>
+
           {isHost && (
             <button onClick={handleCopyLink} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#2d2d3a', border: 'none', color: '#fff', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontFamily: 'var(--ws-font-body)', fontSize: '13px' }}>
               <LucideIcons.Copy size={14} /> Copy Invite
@@ -268,8 +375,17 @@ function FormalInterview() {
                     Waiting for peer...
                   </div>
                 )}
-                <div style={{ position: 'absolute', bottom: '8px', left: '8px', background: 'rgba(0,0,0,0.6)', padding: '2px 8px', borderRadius: '4px', fontSize: '11px' }}>
-                  {isHost ? 'Student' : 'Interviewer'}
+                <div style={{ position: 'absolute', bottom: '8px', left: '8px', background: 'rgba(0,0,0,0.6)', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>{isHost ? 'Student' : 'Interviewer'}</span>
+                  {peerDisqualified ? (
+                    <span style={{ color: '#fff', background: '#dc2626', padding: '1px 6px', borderRadius: '3px', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 700, fontSize: '10px' }}>
+                      <LucideIcons.Ban size={10} /> DISQUALIFIED
+                    </span>
+                  ) : peerWarnings > 0 ? (
+                    <span style={{ color: '#fbbf24', background: 'rgba(245, 158, 11, 0.25)', padding: '1px 5px', borderRadius: '3px', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 600 }}>
+                      <LucideIcons.AlertTriangle size={10} /> {peerWarnings} tab switch{peerWarnings > 1 ? 'es' : ''}
+                    </span>
+                  ) : null}
                 </div>
               </div>
 
@@ -319,7 +435,9 @@ function FormalInterview() {
           <div style={{ flex: 1, position: 'relative' }}>
             <CodeEditor 
               value={code} 
+              readOnly={isDisqualified || peerDisqualified}
               onChange={(newCode) => {
+                if (isDisqualified || peerDisqualified) return;
                 setCode(newCode);
                 socketRef.current?.emit('code-change', newCode, roomId);
               }} 
@@ -329,6 +447,35 @@ function FormalInterview() {
           </div>
         </div>
       </main>
+
+      {/* Disqualification Banners */}
+      {isDisqualified && (
+        <div style={{ background: 'rgba(239, 68, 68, 0.25)', borderTop: '1px solid #ef4444', color: '#ff8585', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '13px', fontWeight: 600 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <LucideIcons.ShieldAlert size={18} color="#ef4444" />
+            <span>INTERVIEW TERMINATED: You were disqualified for exceeding 3 tab/window switch warnings. Code editor has been locked.</span>
+          </div>
+          <button onClick={handleLeave} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>
+            Leave Interview
+          </button>
+        </div>
+      )}
+
+      {peerDisqualified && !isDisqualified && (
+        <div style={{ background: 'rgba(239, 68, 68, 0.25)', borderTop: '1px solid #ef4444', color: '#ff8585', padding: '12px 24px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}>
+          <LucideIcons.ShieldAlert size={18} color="#ef4444" />
+          <span>CANDIDATE DISQUALIFIED: {isHost ? 'The student' : 'The candidate'} exceeded 3 tab switch violations and has been disqualified. Code collaboration is locked.</span>
+        </div>
+      )}
+
+      <TabSwitchWarningModal
+        isOpen={showWarningModal}
+        warningCount={warningCount}
+        maxWarnings={3}
+        onAcknowledge={dismissModal}
+        onDisqualify={() => setShowWarningModal(false)}
+        violations={violations}
+      />
     </div>
   );
 }
