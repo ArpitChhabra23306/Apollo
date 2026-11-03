@@ -99,6 +99,26 @@ function Interview() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // ── Check for custom problem launched from Resume / GitHub prep studio ──
+  useEffect(() => {
+    try {
+      const storedProblemStr = sessionStorage.getItem('apollo_custom_problem');
+      if (storedProblemStr) {
+        const stored = JSON.parse(storedProblemStr);
+        sessionStorage.removeItem('apollo_custom_problem');
+        if (stored.title && stored.description) {
+          setPhase(PHASES.CODING);
+          setProblem(`# ${stored.title} [Project: ${stored.fromProject || 'Candidate Project'}]\n\n${stored.description}`);
+          if (stored.starterCode) setCode(stored.starterCode);
+          if (stored.language) setLanguage(stored.language);
+          if (stored.difficulty) setDifficulty(stored.difficulty);
+        }
+      }
+    } catch (e) {
+      console.warn('Could not read custom problem from session:', e);
+    }
+  }, []);
+
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -213,37 +233,93 @@ function Interview() {
   // ═══════════════ RENDERS ═══════════════
 
   const renderLobby = () => (
-    <div className="iv-setup-card" style={{ maxWidth: '800px' }}>
+    <div className="iv-setup-card" style={{ maxWidth: '960px' }}>
       <div className="iv-setup-header">
         <div className="iv-setup-icon">
           <LucideIcons.Briefcase size={36} color="#9B40E0" />
         </div>
         <h2>Interview Center</h2>
-        <p className="iv-setup-sub">Choose your interview experience</p>
+        <p className="iv-setup-sub">Choose your technical interview experience</p>
       </div>
 
-      <div className="iv-setup-body" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+      <div className="iv-setup-body" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+        {/* Card 1: Resume & GitHub Prep Studio (NEW FEATURE) */}
+        <div 
+          className="iv-mode-card" 
+          onClick={() => navigate('/interview/resume-prep')}
+          style={{ 
+            padding: '24px', 
+            border: '1px solid rgba(155, 64, 224, 0.4)', 
+            borderRadius: '12px', 
+            cursor: 'pointer', 
+            transition: 'all 0.2s', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            textAlign: 'center',
+            background: 'linear-gradient(180deg, rgba(155, 64, 224, 0.08) 0%, rgba(20, 20, 28, 0.5) 100%)',
+            position: 'relative',
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.borderColor = '#9B40E0';
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 8px 24px rgba(155, 64, 224, 0.25)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.borderColor = 'rgba(155, 64, 224, 0.4)';
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = 'none';
+          }}
+        >
+          <div style={{ position: 'absolute', top: '12px', right: '12px', background: '#9B40E0', color: '#fff', fontSize: '10px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '999px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            New
+          </div>
+          <LucideIcons.FileCode2 size={44} color="#c084fc" style={{ marginBottom: '16px' }} />
+          <h3 style={{ margin: '0 0 6px 0', color: '#fff' }}>Resume & GitHub Prep</h3>
+          <p style={{ color: '#94a3b8', fontSize: '13px', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+            Upload your resume PDF or link a GitHub repo. Apollo extracts your past projects and generates tailored 360° technical interview questions.
+          </p>
+          <button 
+            style={{ marginTop: 'auto', width: '100%', padding: '10px', background: '#9B40E0', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+          >
+            <LucideIcons.Sparkles size={14} /> Open Prep Studio
+          </button>
+        </div>
+
+        {/* Card 2: Self-Practice Mode */}
         <div 
           className="iv-mode-card" 
           onClick={() => setPhase(PHASES.SETUP)}
-          style={{ padding: '24px', border: '1px solid #333', borderRadius: '12px', cursor: 'pointer', transition: 'border-color 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}
-          onMouseOver={(e) => e.currentTarget.style.borderColor = '#9B40E0'}
-          onMouseOut={(e) => e.currentTarget.style.borderColor = '#333'}
+          style={{ padding: '24px', border: '1px solid #333', borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.borderColor = '#9B40E0';
+            e.currentTarget.style.transform = 'translateY(-2px)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.borderColor = '#333';
+            e.currentTarget.style.transform = 'translateY(0)';
+          }}
         >
-          <LucideIcons.Bot size={48} color="#9B40E0" style={{ marginBottom: '16px' }} />
-          <h3>Self-Practice Mode</h3>
-          <p style={{ color: '#aaa', fontSize: '14px', marginTop: '8px' }}>Practice with our AI-driven technical interviewer. Features dynamic problem generation and behavioral follow-ups.</p>
+          <LucideIcons.Bot size={44} color="#9B40E0" style={{ marginBottom: '16px' }} />
+          <h3 style={{ margin: '0 0 6px 0', color: '#fff' }}>Self-Practice Mode</h3>
+          <p style={{ color: '#aaa', fontSize: '13px', margin: '0 0 20px 0', lineHeight: 1.5 }}>Practice with our AI-driven technical interviewer. Features dynamic problem generation, restricted execution, and proctoring.</p>
+          <button 
+            style={{ marginTop: 'auto', width: '100%', padding: '10px', background: '#252532', color: '#fff', border: '1px solid #3d3d52', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+          >
+            <LucideIcons.Play size={14} /> Start Practice
+          </button>
         </div>
 
+        {/* Card 3: Formal Interview Mode */}
         <div 
           className="iv-mode-card" 
           style={{ padding: '24px', border: '1px solid #333', borderRadius: '12px', transition: 'border-color 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}
           onMouseOver={(e) => e.currentTarget.style.borderColor = '#9B40E0'}
           onMouseOut={(e) => e.currentTarget.style.borderColor = '#333'}
         >
-          <LucideIcons.Users size={48} color="#9B40E0" style={{ marginBottom: '16px' }} />
-          <h3>Formal Interview Mode</h3>
-          <p style={{ color: '#aaa', fontSize: '14px', marginTop: '8px', marginBottom: '20px' }}>Host a 1-on-1 collaborative session. Includes real-time video calling and synchronized code editing.</p>
+          <LucideIcons.Users size={44} color="#9B40E0" style={{ marginBottom: '16px' }} />
+          <h3 style={{ margin: '0 0 6px 0', color: '#fff' }}>Formal Interview Mode</h3>
+          <p style={{ color: '#aaa', fontSize: '13px', margin: '0 0 16px 0', lineHeight: 1.5 }}>Host a 1-on-1 collaborative session. Includes real-time WebRTC video calling and synchronized code editing.</p>
 
           <button 
             onClick={() => {
@@ -258,10 +334,10 @@ function Interview() {
           <div style={{ display: 'flex', width: '100%', gap: '8px' }}>
             <input 
               type="text" 
-              placeholder="Paste Room ID or Link..." 
+              placeholder="Room ID or Link..." 
               value={joinRoomId}
               onChange={(e) => setJoinRoomId(e.target.value)}
-              style={{ flex: 1, padding: '8px 12px', background: '#1e1e24', border: '1px solid #444', borderRadius: '6px', color: '#fff', fontSize: '14px' }}
+              style={{ flex: 1, padding: '8px 10px', background: '#1e1e24', border: '1px solid #444', borderRadius: '6px', color: '#fff', fontSize: '13px' }}
             />
             <button 
               onClick={() => {
@@ -271,7 +347,7 @@ function Interview() {
                 }
               }}
               disabled={!joinRoomId.trim()}
-              style={{ padding: '8px 16px', background: joinRoomId.trim() ? '#333' : '#222', color: joinRoomId.trim() ? '#fff' : '#666', border: '1px solid #444', borderRadius: '6px', cursor: joinRoomId.trim() ? 'pointer' : 'not-allowed' }}
+              style={{ padding: '8px 14px', background: joinRoomId.trim() ? '#333' : '#222', color: joinRoomId.trim() ? '#fff' : '#666', border: '1px solid #444', borderRadius: '6px', cursor: joinRoomId.trim() ? 'pointer' : 'not-allowed', fontSize: '13px' }}
             >
               Join
             </button>
